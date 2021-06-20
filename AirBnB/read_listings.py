@@ -1,46 +1,75 @@
 import pandas as pd
 import numpy as np
-from pandas_profiling import ProfileReport
-
-base_path = '/Users/chriscollins/Documents/lambda/Build_Week_1/AirBnB/'
+import re
+base_path = '/Users/petergeraghty/TwitOff/AirBnB/'
 pickle_path = base_path + 'AirBnB.pkl'
+nc_path = base_path + 'asheville_nc_listings.csv'
+austin_path = base_path + 'austin_tx_listings.csv'
+broward_path = base_path + 'broward_fl_listings.csv'
+cambridge_path = base_path + 'cambridge_ma_listings.csv'
+chicago_path = base_path + 'chicago_il_listings.csv'
+columbus_path = base_path + 'columbus_oh_listings.csv'
 
 
-def load_data(how):
-    if how == 'fresh':
-        nc_path = base_path + 'asheville_nc_listings.csv'
-        austin_path = base_path + 'austin_tx_listings.csv'
-        broward_path = base_path + 'broward_fl_listings.csv'
-        cambridge_path = base_path + 'cambridge_ma_listings.csv'
-        chicago_path = base_path + 'chicago_il_listings.csv'
-        columbus_path = base_path + 'columbus_oh_listings.csv'
-
-        nc_df = pd.read_csv(nc_path)
-        austin_df = pd.read_csv(austin_path)
-        cambridge_df = pd.read_csv(cambridge_path)
-        broward_df = pd.read_csv(broward_path)
-        chicago_df = pd.read_csv(chicago_path)
-        columbus_df = pd.read_csv(columbus_path)
-
-        df = pd.concat([nc_df, austin_df, cambridge_df, broward_df, chicago_df, columbus_df])
-
-        drop_cols = ['host_picture_url', 'host_thumbnail_url', 'listing_url', 'picture_url', 'host_has_profile_pic']
-
-        df = air_bnb_df.drop(columns=drop_cols)
-        df.to_pickle(pickle_path)
-        print("Saved Pickle Successfully")
-        print(air_bnb_df.head())
-        print(air_bnb_df.columns)
-
-    else:
-        df = pd.read_pickle(pickle_path)
-        print(air_bnb_df.head())
-
+def clean_bathrooms(df):
+    # Not Used
+    idx = 0
+    out = []
+    for item in df['bathrooms_text']:
+        idx += 1
+        item = str(item)
+        if item.find('half') != -1:
+            num = .5
+            out.append(num)
+        elif not hasNumbers(item):
+            out.append(np.nan)
+        else:
+            try:
+                num = []
+                for t in item.split():
+                    try:
+                        num.append(float(t))
+                    except ValueError:
+                        pass
+                out.append(num)
+            except:
+                out.append(np.nan)
+        if len(out) != idx:
+            print(item)
+            print("Error")
+    df.drop(columns=['bathrooms_text', 'bathrooms'], inplace=True)
+    df['bathrooms'] = out
     return df
 
-# air_bnb_df = load_data("fresh")
+
+def hasNumbers(input):
+    try:
+        out = any(char.isdigit() for char in input)
+    except:
+        out = False
+    return out
 
 
-air_bnb_df = load_data("from pickle")
+def load_data():
+    cities = ['Asheville, NC', 'Austin, TX', 'Broward, FL', 'Cambridge, MA', 'Chicago, IL', 'Columbus, OH']
+    paths = [nc_path, austin_path, broward_path, cambridge_path, chicago_path, columbus_path]
+    df = pd.DataFrame()
+    for city, path in zip(cities, paths):
+        city_df = pd.read_csv(path)
+        city_df['City'] = city
+        if city == 'Asheville, NC':
+            df = city_df
+        else:
+            df = pd.concat([city_df, df])
 
+    drop_cols = ['host_picture_url', 'host_thumbnail_url', 'listing_url', 'picture_url', 'host_has_profile_pic']
+
+    df = df.drop(columns=drop_cols)
+    for col in df.columns:
+        df[col].fillna(value="Missing", inplace=True)
+    df.to_pickle(pickle_path)
+    print("Saved Pickle Successfully")
+    # print(df.columns)
+    print(df.shape)
+    return df
 
